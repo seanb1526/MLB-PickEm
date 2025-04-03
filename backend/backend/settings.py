@@ -65,7 +65,7 @@ DATABASES = {
         'NAME': 'postgres',
         'USER': 'postgres',  # This is the standard user for direct connection
         'PASSWORD': os.getenv('SUPABASE_PASSWORD'),
-        'HOST': 'db.jhcauobszvwbaelejdrb.supabase.co',  # Your exact Supabase host
+        'HOST': os.getenv('SUPABASE_HOST'),  # Your exact Supabase host
         'PORT': '5432',
         'OPTIONS': {
             'sslmode': 'require',

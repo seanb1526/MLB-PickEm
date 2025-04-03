@@ -1,6 +1,9 @@
 import { Box, Container, Typography, Button, Grid, Card, CardContent } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 function Landing() {
+  const navigate = useNavigate();
+
   return (
     <Box>
       {/* Hero Section - Full-width background image */}
@@ -56,6 +59,7 @@ function Landing() {
               <Button 
                 variant="contained" 
                 size="large"
+                onClick={() => navigate('/tournaments')}
                 sx={{ 
                   mr: 2, 
                   px: 4, 
@@ -68,11 +72,15 @@ function Landing() {
                   }
                 }}
               >
-                Start Playing
+                View Tournaments
               </Button>
               <Button 
                 variant="outlined" 
                 size="large"
+                onClick={() => {
+                  const element = document.getElementById('how-it-works');
+                  element?.scrollIntoView({ behavior: 'smooth' });
+                }}
                 sx={{ 
                   px: 4, 
                   py: 1.5,
@@ -93,7 +101,7 @@ function Landing() {
       </Box>
 
       {/* How It Works Section */}
-      <Box sx={{ py: 10, backgroundColor: '#f8f9fa' }}>
+      <Box id="how-it-works" sx={{ py: 10, backgroundColor: '#f8f9fa' }}>
         <Container maxWidth="lg">
           <Typography 
             variant="h2" 
@@ -111,17 +119,23 @@ function Landing() {
               {
                 title: "Pick Your Tournament",
                 description: "Enter daily contests starting at just 100 coins",
-                image: "/images/tournament.jpg" // Need: Baseball scoreboard or tournament bracket image
+                buttonText: "View Tournaments",
+                navigate: () => navigate('/tournaments'),
+                image: "/images/tournament.jpg"
               },
               {
                 title: "Make Your Predictions",
                 description: "Select winners for each MLB game of the day",
-                image: "/images/predictions.jpg" // Need: Baseball player at bat or pitching image
+                buttonText: "Demo Picks",
+                navigate: () => navigate('/tournaments'),
+                image: "/images/predictions.jpg"
               },
               {
                 title: "Win Big",
                 description: "Top players split the prize pool daily",
-                image: "/images/trophy.jpg" // Need: Trophy or celebration image
+                buttonText: "View Leaderboard",
+                navigate: () => navigate('/tournaments'),
+                image: "/images/trophy.jpg"
               }
             ].map((step, index) => (
               <Grid item xs={12} md={4} key={index}>
@@ -148,9 +162,16 @@ function Landing() {
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
                       {step.title}
                     </Typography>
-                    <Typography variant="body1">
+                    <Typography variant="body1" sx={{ mb: 3 }}>
                       {step.description}
                     </Typography>
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      onClick={step.navigate}
+                    >
+                      {step.buttonText}
+                    </Button>
                   </CardContent>
                 </Card>
               </Grid>
