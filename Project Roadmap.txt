@@ -1,0 +1,251 @@
+﻿📌 Development Roadmap
+This roadmap is structured in logical steps so you can build things in order.
+
+🔹 Step 1: Set Up the Core Backend (Django)
+Before working on the frontend, you need API endpoints and database models in place.
+1.1 - Define Models in Django (Supabase)
+You'll need the following models:
+● Tournament Model
+
+● Game Model
+
+● Pick Model
+
+● Payment Model
+
+👉 Create models.py in your Django app:
+python
+CopyEdit
+from django.db import models
+
+class Tournament(models.Model):
+    id = models.AutoField(primary_key=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    entry_fee = models.DecimalField(max_digits=5, decimal_places=2)
+    pot_total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+class Game(models.Model):
+    id = models.AutoField(primary_key=True)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    game_date = models.DateField()
+    team_home = models.CharField(max_length=50)
+    team_away = models.CharField(max_length=50)
+    winner = models.CharField(max_length=50, null=True, blank=True)  # Filled in after the game
+
+class Pick(models.Model):
+    id = models.AutoField(primary_key=True)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    email = models.EmailField()
+    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    pick_team = models.CharField(max_length=50)
+    is_correct = models.BooleanField(null=True, blank=True)  # Calculated later
+
+class Payment(models.Model):
+    id = models.AutoField(primary_key=True)
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE)
+    email = models.EmailField()
+    amount = models.DecimalField(max_digits=5, decimal_places=2)
+    is_verified = models.BooleanField(default=False)
+
+1.2 - Run Migrations & Connect Supabase
+Run:
+sh
+CopyEdit
+python manage.py makemigrations
+python manage.py migrate
+
+
+🔹 Step 2: Set Up API Endpoints in Django
+Now, build RESTful API endpoints using Django REST Framework (DRF) to interact with your frontend.
+👉 Install DRF:
+sh
+CopyEdit
+pip install djangorestframework
+
+👉 Add it to settings.py:
+python
+CopyEdit
+INSTALLED_APPS = [
+    ...,
+    'rest_framework',
+]
+
+👉 Create serializers.py:
+python
+CopyEdit
+from rest_framework import serializers
+from .models import Tournament, Game, Pick, Payment
+
+class TournamentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Tournament
+        fields = '__all__'
+
+class GameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Game
+        fields = '__all__'
+
+class PickSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Pick
+        fields = '__all__'
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = '__all__'
+
+👉 Create views.py with API Views:
+python
+CopyEdit
+from rest_framework import viewsets
+from .models import Tournament, Game, Pick, Payment
+from .serializers import TournamentSerializer, GameSerializer, PickSerializer, PaymentSerializer
+
+class TournamentViewSet(viewsets.ModelViewSet):
+    queryset = Tournament.objects.all()
+    serializer_class = TournamentSerializer
+
+class GameViewSet(viewsets.ModelViewSet):
+    queryset = Game.objects.all()
+    serializer_class = GameSerializer
+
+class PickViewSet(viewsets.ModelViewSet):
+    queryset = Pick.objects.all()
+    serializer_class = PickSerializer
+
+class PaymentViewSet(viewsets.ModelViewSet):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+
+👉 Add API URLs in urls.py:
+python
+CopyEdit
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import TournamentViewSet, GameViewSet, PickViewSet, PaymentViewSet
+
+router = DefaultRouter()
+router.register(r'tournaments', TournamentViewSet)
+router.register(r'games', GameViewSet)
+router.register(r'picks', PickViewSet)
+router.register(r'payments', PaymentViewSet)
+
+urlpatterns = [
+    path('api/', include(router.urls)),
+]
+
+✅ Now your backend is ready! Test endpoints using Postman or the Django admin panel.
+
+🔹 Step 3: Build the Frontend (React)
+Now, connect the React frontend to the Django API.
+3.1 - Set Up React Components
+Inside src/components, create:
+● TournamentsList.js
+
+● PickGames.js
+
+● Leaderboard.js
+
+● PaymentPage.js
+
+👉 Fetch tournaments (TournamentsList.js):
+javascript
+CopyEdit
+import { useEffect, useState } from "react";
+
+function TournamentsList() {
+  const [tournaments, setTournaments] = useState([]);
+
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/api/tournaments/")
+      .then(res => res.json())
+      .then(data => setTournaments(data));
+  }, []);
+
+  return (
+    <div>
+      <h1>Available Tournaments</h1>
+      {tournaments.map(tournament => (
+        <div key={tournament.id}>
+          <p>Start: {tournament.start_date} - End: {tournament.end_date}</p>
+          <p>Entry Fee: ${tournament.entry_fee}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default TournamentsList;
+
+
+🔹 Step 4: Handle User Picks
+4.1 - Fetch Games & Allow User Picks
+Inside PickGames.js:
+javascript
+CopyEdit
+import { useState, useEffect } from "react";
+
+function PickGames({ tournamentId }) {
+  const [games, setGames] = useState([]);
+  const [picks, setPicks] = useState({});
+
+  useEffect(() => {
+    fetch(`http://127.0.0.1:8000/api/games/?tournament=${tournamentId}`)
+      .then(res => res.json())
+      .then(data => setGames(data));
+  }, [tournamentId]);
+
+  const handlePick = (gameId, team) => {
+    setPicks(prev => ({ ...prev, [gameId]: team }));
+  };
+
+  const submitPicks = () => {
+    Object.entries(picks).forEach(([gameId, pickTeam]) => {
+      fetch("http://127.0.0.1:8000/api/picks/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tournament: tournamentId, game: gameId, pick_team: pickTeam, email: "user@example.com" }),
+      });
+    });
+  };
+
+  return (
+    <div>
+      <h1>Make Your Picks</h1>
+      {games.map(game => (
+        <div key={game.id}>
+          <p>{game.team_home} vs {game.team_away}</p>
+          <button onClick={() => handlePick(game.id, game.team_home)}>Pick {game.team_home}</button>
+          <button onClick={() => handlePick(game.id, game.team_away)}>Pick {game.team_away}</button>
+        </div>
+      ))}
+      <button onClick={submitPicks}>Submit Picks</button>
+    </div>
+  );
+}
+
+export default PickGames;
+
+
+🔹 Step 5: Payment Processing
+For now, manually confirm payments in Django.
+
+🔹 Step 6: Show Leaderboard
+Inside Leaderboard.js:
+javascript
+CopyEdit
+// Fetch picks and show user rankings based on correct picks
+
+
+🔹 Step 7: Testing & Deployment
+● Test API requests.
+
+● Deploy backend (Railway, Render, or DigitalOcean).
+
+● Deploy frontend (Vercel or Netlify).
+
+● Promote locally and get users!
+
